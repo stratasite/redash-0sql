@@ -1,0 +1,37 @@
+name: Date
+physical_name: date_dim
+datasource: tpcds
+cost: 10
+
+fields:
+  - type: dimension
+    name: Sold Date
+    description: Calendar date of the sale
+    data_type: date
+    expression:
+      lookup: true
+      sql: d_date
+
+  - type: dimension
+    name: Year
+    description: Calendar year of the sale
+    data_type: integer
+    expression:
+      lookup: true
+      sql: d_year
+
+  - type: dimension
+    name: Quarter
+    description: Calendar quarter of the sale, as 1998Q1
+    data_type: string
+    expression:
+      lookup: true
+      sql: d_quarter_name
+
+  - type: dimension
+    name: Day Of Week
+    description: Weekday name of the sale
+    data_type: string
+    expression:
+      lookup: true
+      sql: d_day_name

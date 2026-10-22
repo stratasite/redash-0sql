@@ -1,0 +1,33 @@
+name: Store
+physical_name: store
+datasource: tpcds
+cost: 10
+
+fields:
+  - type: dimension
+    name: Store Name
+    data_type: string
+    expression:
+      lookup: true
+      sql: s_store_name
+
+  - type: dimension
+    name: Store City
+    data_type: string
+    expression:
+      lookup: true
+      sql: s_city
+
+  - type: dimension
+    name: Store State
+    data_type: string
+    expression:
+      lookup: true
+      sql: s_state
+
+  - type: dimension
+    name: Store Manager
+    data_type: string
+    expression:
+      lookup: true
+      sql: s_manager

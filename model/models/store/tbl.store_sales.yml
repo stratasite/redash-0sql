@@ -1,0 +1,72 @@
+name: Store Sales
+physical_name: store_sales
+datasource: tpcds
+cost: 100
+
+fields:
+  - type: dimension
+    name: Ticket Number
+    description: The sales ticket a line item belongs to
+    data_type: integer
+    expression:
+      primary_key: true
+      sql: ss_ticket_number
+
+  - type: measure
+    name: Net Paid
+    description: What customers paid, after discounts and before tax
+    data_type: decimal
+    expression:
+      sql: sum(ss_net_paid)
+
+  - type: measure
+    name: Quantity
+    description: Units sold
+    data_type: integer
+    expression:
+      sql: sum(ss_quantity)
+
+  - type: measure
+    name: Tickets
+    description: Distinct sales tickets
+    data_type: integer
+    expression:
+      sql: count(distinct ss_ticket_number)
+
+  - type: measure
+    name: Wholesale Cost
+    description: What the items cost the store
+    tags: [finance]
+    data_type: decimal
+    expression:
+      sql: sum(ss_ext_wholesale_cost)
+
+  - type: measure
+    name: Discount Rate
+    description: Discount given as a share of list price
+    data_type: decimal
+    expression:
+      sql: sum(ss_ext_discount_amt) / nullif(sum(ss_ext_list_price), 0)
+
+  - type: measure
+    name: Net Profit
+    description: As TPC-DS generates it, net paid less costs; negative at small scale factors
+    tags: [finance]
+    data_type: decimal
+    expression:
+      sql: sum(ss_net_profit)
+
+  - type: measure
+    name: Margin
+    description: Net profit as a share of net paid
+    tags: [finance]
+    data_type: decimal
+    expression:
+      sql: sum(ss_net_profit) / nullif(sum(ss_net_paid), 0)
+
+  - type: measure
+    name: Average Ticket
+    description: Net paid per sales ticket
+    data_type: decimal
+    expression:
+      sql: sum(ss_net_paid) / nullif(count(distinct ss_ticket_number), 0)

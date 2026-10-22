@@ -1,0 +1,8 @@
+[submodule "redash"]
+	path = redash
+	url = https://github.com/getredash/redash.git
+	shallow = true
+[submodule "0sql"]
+	path = 0sql
+	url = https://github.com/stratasite/0sql.git
+	shallow = true

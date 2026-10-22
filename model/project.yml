@@ -1,0 +1,6 @@
+# The semantic model Redash queries through 0sql. TPC-DS's store channel:
+# sales joined to dates, stores, items and customer addresses, with one
+# row-level security policy on profit. Generated data; see ../README.md.
+name: TPC-DS Store
+uid: tpcds
+production_branch: main

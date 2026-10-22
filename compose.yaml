@@ -1,0 +1,57 @@
+# Redash and 0sql, side by side. ./demo.sh builds and seeds everything.
+x-redash: &redash
+  image: redash-0sql:26.9.0
+  env_file: .env
+  depends_on: [postgres, redis, zsql]
+  volumes:
+    - warehouse:/warehouse
+  restart: unless-stopped
+
+services:
+  zsql:
+    build:
+      context: .
+      dockerfile: docker/zsql.Dockerfile
+    image: zsql:local
+    ports: ["${ZSQL_PORT:-3699}:3699"]
+    volumes:
+      - ./model:/model:ro
+      - zsql-data:/data
+    environment:
+      ZSQL_DATA_DIR: /data
+    restart: unless-stopped
+
+  server:
+    <<: *redash
+    build:
+      context: .
+      dockerfile: docker/redash.Dockerfile
+    command: server
+    ports: ["${REDASH_PORT:-5055}:5000"]
+
+  scheduler:
+    <<: *redash
+    command: scheduler
+
+  worker:
+    <<: *redash
+    command: worker
+    environment:
+      QUEUES: "queries,scheduled_queries,schemas,periodic,emails,default"
+      WORKERS_COUNT: 2
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  warehouse:
+  zsql-data:
+  pgdata:
