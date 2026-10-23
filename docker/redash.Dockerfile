@@ -1,5 +1,6 @@
 # The official Redash image, unchanged, plus the 0sql query runner and DuckDB.
-# The tag matches the ./redash submodule.
+# Nothing is built from source; this layer only adds the runner to the image.
+# Upstream: https://github.com/getredash/redash
 FROM redash/redash:26.9.0
 USER root
 RUN pip install --no-cache-dir duckdb==1.3.2 \

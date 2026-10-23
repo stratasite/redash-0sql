@@ -10,27 +10,39 @@ item category, net paid, wholesale cost, discount rate, year = 2002
 
 ![three saved lines, three charts](docs/dashboard.jpg)
 
-Both projects are here as submodules, at the exact versions the demo runs:
-[`redash/`](redash) is Redash at v26.9.0, [`0sql/`](0sql) is the 0sql engine
-built from source. Everything else in this repository is the glue:
+Nothing is compiled and neither project is vendored here. Both arrive
+prebuilt, at the versions the demo runs:
+
+| | |
+|---|---|
+| [getredash/redash](https://github.com/getredash/redash) | the official `redash/redash:26.9.0` image, unchanged |
+| [stratasite/0sql](https://github.com/stratasite/0sql) | the published `zsql` release binary, v0.6.0 by default |
+
+Everything in this repository is the glue:
 
 | | |
 |---|---|
 | [`redash_zsql.py`](redash_zsql.py) | the query runner, one file, enabled with `REDASH_ADDITIONAL_QUERY_RUNNERS` |
 | [`model/`](model) | the semantic model the demo queries: TPC-DS's store channel, 5 tables, 1 policy |
 | [`compose.yaml`](compose.yaml), [`docker/`](docker) | Redash, zsql, Redis and Postgres as one stack |
+| [`test_redash_zsql.py`](test_redash_zsql.py) | the runner's checks, which need no Redash installed |
 | [`demo.sh`](demo.sh) | from nothing to a dashboard, one command |
 
 ## Run it
 
-Needs Docker with Compose v2, python3 and openssl. The first run builds zsql
-from source, which takes a few minutes; everything after is seconds.
+Needs Docker with Compose v2, python3 and openssl. Both images are pulled,
+not built, so the first run is a download and a TPC-DS generation rather than
+a compile.
 
 ```sh
-git clone --recurse-submodules https://github.com/stratasite/redash-0sql
+git clone https://github.com/stratasite/redash-0sql
 cd redash-0sql
 ./demo.sh
 ```
+
+`ZSQL_VERSION` in `.env` picks the zsql
+[release](https://github.com/stratasite/0sql/releases) to pull; the image is
+tagged with it, so changing it swaps versions on the next `docker compose up`.
 
 Then open http://localhost:5055 and sign in:
 
@@ -55,7 +67,7 @@ autocompletes them, instead of raw warehouse columns.
 quarter, net paid
 customer state, net paid, customer state top 10 by net paid
 item category, yoy(net paid), year between 2000 and 2002
-Cost Share = [Wholesale Cost]@m / [Net Paid]@m, brand
+Cost Share = [Wholesale Cost]@m / [Net Paid]@m, brand   # needs ZSQL_VERSION 0.6.1
 ```
 
 Measures like `discount rate` or `average ticket` are defined once, in the model.
@@ -140,14 +152,13 @@ source that runs through it, and write the model for those tables.
 ## Layout
 
 ```
-redash/            submodule: getredash/redash at v26.9.0 (the official image is this tag)
-0sql/              submodule: stratasite/0sql, built into the zsql image
 model/             the TPC-DS store model: project.yml, datasources.yml, security.yml, models/
 redash_zsql.py     the query runner
+test_redash_zsql.py  its checks; needs no Redash, `python3 test_redash_zsql.py`
 seed_warehouse.py  TPC-DS into DuckDB, run inside the Redash image
-docker/            redash.Dockerfile (official image + runner), zsql.Dockerfile (from source)
+docker/            redash.Dockerfile (official image + runner), zsql.Dockerfile (release binary)
 compose.yaml       the stack; .env is written by demo.sh
-demo.sh            build, seed, dashboard
+demo.sh            start, seed, dashboard
 ```
 
 MIT, like both projects it joins.

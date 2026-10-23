@@ -1,4 +1,6 @@
-# Redash and 0sql, side by side. ./demo.sh builds and seeds everything.
+# Redash and 0sql, side by side. ./demo.sh starts and seeds everything.
+# Both images are prebuilt upstream: the official Redash image, and the
+# published zsql release binary. Nothing is compiled from source.
 x-redash: &redash
   image: redash-0sql:26.9.0
   env_file: .env
@@ -12,7 +14,9 @@ services:
     build:
       context: .
       dockerfile: docker/zsql.Dockerfile
-    image: zsql:local
+      args:
+        ZSQL_VERSION: ${ZSQL_VERSION:-0.6.0}
+    image: zsql:${ZSQL_VERSION:-0.6.0}
     ports: ["${ZSQL_PORT:-3699}:3699"]
     volumes:
       - ./model:/model:ro

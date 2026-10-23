@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Redash with 0sql, from nothing to a dashboard:
-#   builds zsql from ./0sql and Redash from the official image plus the runner,
+#   pulls the zsql release binary and the official Redash image plus the runner,
 #   generates a TPC-DS warehouse in DuckDB, creates an admin and a regional
 #   user, and seeds three saved queries with charts on a dashboard.
 # Idempotent: run it again to pick up where it stopped.
@@ -28,7 +28,7 @@ wait_for() { until curl -sf "$1" >/dev/null; do sleep 2; done; }
 
 step() { printf '\n== %s\n' "$1"; }
 
-step "building and starting"
+step "pulling and starting"
 docker compose up -d --build
 wait_for "$ZSQL/healthz"; wait_for "$REDASH/ping"
 
