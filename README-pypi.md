@@ -16,7 +16,7 @@ planned statement under the results.
 
 ```dockerfile
 FROM redash/redash:26.9.0
-RUN pip install --no-cache-dir redash-zsql
+RUN pip install --no-cache-dir "git+https://github.com/stratasite/redash-0sql.git@v0.1.0"
 ENV REDASH_ADDITIONAL_QUERY_RUNNERS=redash_zsql
 ```
 

@@ -90,12 +90,16 @@ if [ "$(api "$REDASH/api/dashboards" | json "d['count']")" = 0 ]; then
     api -X POST "$REDASH/api/queries/$q/results" -d '{"max_age":0,"parameters":{}}' >/dev/null
     api -X POST "$REDASH/api/visualizations" -d "{\"query_id\":$q,\"type\":\"CHART\",\"name\":\"$3\",\"options\":$4}" | json "d['id']"
   }
-  AXES='"sortX":true,"xAxis":{"type":"category","labels":{"enabled":true}},"yAxis":[{"type":"linear"},{"type":"linear","opposite":true}]'
-  V1=$(chart "Contacts by month" "month(contact date), contacts" "Contacts by month" \
-       "{\"globalSeriesType\":\"column\",$AXES,\"legend\":{\"enabled\":false},\"seriesOptions\":{},\"columnMapping\":{\"Month(Contact Date)\":\"x\",\"Contacts\":\"y\"}}")
+  YAXES='"yAxis":[{"type":"linear"},{"type":"linear","opposite":true}]'
+  AXES="\"sortX\":true,\"xAxis\":{\"type\":\"category\",\"labels\":{\"enabled\":true}},$YAXES"
+  # a month is a date, so that one axis is datetime: otherwise every label is a
+  # full timestamp and the tile is unreadable.
+  DATE_AXES="\"sortX\":true,\"xAxis\":{\"type\":\"datetime\",\"labels\":{\"enabled\":true}},$YAXES"
+  V1=$(chart "Contacts by month" "month(contact date), contacts" "By month" \
+       "{\"globalSeriesType\":\"column\",$DATE_AXES,\"legend\":{\"enabled\":false},\"seriesOptions\":{},\"columnMapping\":{\"Month(Contact Date)\":\"x\",\"Contacts\":\"y\"}}")
   V2=$(chart "Handle time and escalation by channel" "contact channel, aht mins, escalation rate" "By channel" \
        "{\"globalSeriesType\":\"column\",$AXES,\"legend\":{\"enabled\":true},\"seriesOptions\":{\"Escalation Rate\":{\"yAxis\":1,\"type\":\"line\"}},\"columnMapping\":{\"Contact Channel\":\"x\",\"AHT Mins\":\"y\",\"Escalation Rate\":\"y\"}}")
-  V3=$(chart "Cost per contact by region" "call center region, cost per contact usd, contacts" "Cost per contact by region" \
+  V3=$(chart "Cost per contact by region" "call center region, cost per contact usd, contacts" "By region" \
        "{\"globalSeriesType\":\"column\",$AXES,\"legend\":{\"enabled\":true},\"seriesOptions\":{\"Contacts\":{\"yAxis\":1,\"type\":\"line\"}},\"columnMapping\":{\"Call Center Region\":\"x\",\"Cost Per Contact USD\":\"y\",\"Contacts\":\"y\"}}")
   D=$(api -X POST "$REDASH/api/dashboards" -d '{"name":"0sql on Redash"}' | json "d['id']")
   col=0

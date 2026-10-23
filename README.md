@@ -61,7 +61,8 @@ links. `docker compose down -v` resets.
 
 ## What you get in Redash
 
-**A new data source type, "0sql".** Point it at a 0sql server and a project.
+**A new data source type, "0sql semantic layer".** Point it at a 0sql server
+and a project.
 The schema sidebar lists the model's dimensions and measures per table, and
 autocompletes them, instead of raw warehouse columns.
 
@@ -94,7 +95,7 @@ that group, runs the same saved query as the admin and gets AMER. A user with
 no region tag gets `WHERE 1 = 0`, because the policy denies the unresolved
 case. Redash admins plan as system admins and bypass it.
 
-![the same saved query, run by Dana](docs/rls.png)
+![the same saved query, run by Dana](docs/rls.jpg)
 
 ```yaml
 # customer-service/security.yml
@@ -137,13 +138,17 @@ does exactly this, with a plain Redash DuckDB data source as the warehouse.
 ## Install into an existing Redash
 
 The runner is one module with no dependency Redash does not already have.
-Add it to your Redash image, or `pip install redash-zsql` into its virtualenv:
+pip installs it straight from this repository, so there is nothing to fetch
+from a package index:
 
 ```dockerfile
 FROM redash/redash:26.9.0
-RUN pip install --no-cache-dir redash-zsql
+RUN pip install --no-cache-dir "git+https://github.com/stratasite/redash-0sql.git@v0.1.0"
 ENV REDASH_ADDITIONAL_QUERY_RUNNERS=redash_zsql
 ```
+
+Pin the tag, as above, so an image rebuild does not silently move versions.
+Drop `@v0.1.0` to track `main`.
 
 Redash in this version loads runners from that variable rather than from
 entry points, so the install and the variable are both needed. Set it on the
@@ -194,4 +199,4 @@ compose.yaml       the stack; .env is written by demo.sh
 demo.sh            start, seed, dashboard
 ```
 
-MIT, like both projects it joins.
+MIT, like the projects it joins.
