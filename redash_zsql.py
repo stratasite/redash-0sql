@@ -133,19 +133,39 @@ class Zsql(BaseQueryRunner):
 
     # -- the warehouse ------------------------------------------------------
 
-    def execute(self, sql, user):
-        """Rows for the SQL, from DuckDB or from the named Redash data source."""
+    def _target(self):
+        """The runner for the delegated data source, or None for the DuckDB file.
+
+        Raises with a message naming the problem, so a misconfigured data source
+        fails on the connection test rather than on the first query.
+        """
         if self.configuration.get("duckdb_file"):
-            return self._execute_duckdb(sql)
+            return None
         name = self.configuration.get("data_source")
         if not name:
-            return None, "The 0sql data source needs a DuckDB file or a Redash data source to run the SQL on."
+            raise Exception("The 0sql data source needs a DuckDB file or a Redash data source to run the SQL on.")
         from redash.models import DataSource
 
         ds = DataSource.query.filter(DataSource.name == name).first()
         if ds is None:
-            return None, f"No Redash data source is named {name!r}."
-        return ds.query_runner.run_query(sql, user)
+            raise Exception(f"No Redash data source is named {name!r}.")
+        runner = ds.query_runner
+        # BaseQueryRunner declares "sql"; MongoDB, Elasticsearch, JQL and the
+        # YAML- and Python-based runners override it and cannot take a statement.
+        syntax = getattr(runner, "syntax", "sql")
+        if syntax != "sql":
+            raise Exception(
+                f"{name!r} is a {ds.type} data source, which takes {syntax}, not SQL. "
+                "0sql plans SQL, so pick a SQL data source or a DuckDB file instead."
+            )
+        return runner
+
+    def execute(self, sql, user):
+        """Rows for the SQL, from DuckDB or from the named Redash data source."""
+        runner = self._target()
+        if runner is None:
+            return self._execute_duckdb(sql)
+        return runner.run_query(sql, user)
 
     def _execute_duckdb(self, sql):
         if duckdb is None:
@@ -164,7 +184,10 @@ class Zsql(BaseQueryRunner):
 
     def test_connection(self):
         self._get("/tables")
+        self._target()
         if self.configuration.get("duckdb_file"):
+            if duckdb is None:
+                raise Exception("The duckdb package is not installed in this Redash image.")
             duckdb.connect(self.configuration["duckdb_file"], read_only=True).close()
 
     def get_schema(self, get_stats=False):
@@ -193,6 +216,8 @@ class Zsql(BaseQueryRunner):
             data, error = self.execute(sql, user)
         except Exception as e:
             return None, f"{e}\n\nSQL from 0sql:\n{sql}"
+        if error:
+            return None, f"{error}\n\nSQL from 0sql:\n{sql}"
         if isinstance(data, dict):
             data["log"] = sql.splitlines()
         return data, error
