@@ -1,6 +1,0 @@
-# 0sql never opens the warehouse; the adapter only picks the SQL dialect.
-# The Redash data source is what runs the SQL, on the DuckDB file demo.sh builds.
-tpcds:
-  name: TPC-DS (DuckDB)
-  adapter: duckdb
-  tier: hot

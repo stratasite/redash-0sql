@@ -1,2 +1,4 @@
 .git
 docs
+# Mounted at run time, never copied into an image.
+customer-service

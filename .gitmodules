@@ -1,0 +1,4 @@
+[submodule "customer-service"]
+	path = customer-service
+	url = https://github.com/stratasite/customer-service.git
+	branch = main
