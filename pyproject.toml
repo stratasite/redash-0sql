@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "redash-zsql"
 version = "0.1.0"
 description = "A Redash query runner that plans SQL from a 0sql semantic model, so queries are written in business terms"
-readme = "README.md"
+readme = "README-pypi.md"  # the repo README is about the demo; this one is about the package
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
