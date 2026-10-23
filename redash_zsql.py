@@ -89,7 +89,10 @@ class Zsql(BaseQueryRunner):
 
     @classmethod
     def name(cls):
-        return "0sql"
+        # 0sql plans SQL and never opens a warehouse. Redash has no slot for a
+        # semantic layer, so this registers as a data source type; the name and
+        # the field labels below say which half does what.
+        return "0sql semantic layer"
 
     @classmethod
     def configuration_schema(cls):
@@ -98,10 +101,10 @@ class Zsql(BaseQueryRunner):
             "properties": {
                 "server": {"type": "string", "title": "0sql server URL", "default": "http://zsql:3699"},
                 "api_key": {"type": "string", "title": "API key (a server with accounts on)"},
-                "project": {"type": "string", "title": "Project"},
-                "branch": {"type": "string", "title": "Branch", "default": "main"},
-                "duckdb_file": {"type": "string", "title": "Run the SQL on this DuckDB file"},
-                "data_source": {"type": "string", "title": "…or through this Redash data source"},
+                "project": {"type": "string", "title": "Model project"},
+                "branch": {"type": "string", "title": "Model branch", "default": "main"},
+                "duckdb_file": {"type": "string", "title": "Warehouse: a DuckDB file Redash opens read-only"},
+                "data_source": {"type": "string", "title": "Warehouse: …or an existing Redash data source"},
             },
             "order": ["server", "api_key", "project", "branch", "duckdb_file", "data_source"],
             "required": ["server", "project", "branch"],
@@ -191,13 +194,18 @@ class Zsql(BaseQueryRunner):
             duckdb.connect(self.configuration["duckdb_file"], read_only=True).close()
 
     def get_schema(self, get_stats=False):
-        """The model's dimensions and measures per table, for the sidebar and autocomplete."""
+        """The model's dimensions and measures per table, for the sidebar and autocomplete.
+
+        A column carries its kind as the `type` Redash shows beside the name, so
+        the sidebar reads as the model does: measure or dimension, not varchar.
+        """
         schema = {}
         for f in self._get("/fields")["fields"]:
             if f.get("hidden"):
                 continue
+            column = {"name": f["name"], "type": f.get("kind") or ""}
             for table in f["tables"]:
-                schema.setdefault(table, {"name": table, "columns": []})["columns"].append(f["name"])
+                schema.setdefault(table, {"name": table, "columns": []})["columns"].append(column)
         return list(schema.values())
 
     def run_query(self, query, user):
