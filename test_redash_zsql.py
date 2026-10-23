@@ -110,7 +110,7 @@ use(None)
 fails_with(lambda: runner().execute("SELECT 1", None), "No Redash data source is named 'wh'")
 
 bare = runner(data_source="")
-fails_with(bare.test_connection, "needs a DuckDB file or a Redash data source")
+fails_with(bare.test_connection, "needs the name of a Redash data source")
 
 # -- the refusal reaches the user with the planned SQL attached ------------
 

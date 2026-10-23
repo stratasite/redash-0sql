@@ -48,12 +48,26 @@ sql "select 1 from users where email='$ADMIN_EMAIL'" | grep -q 1 \
   || manage users create_root "$ADMIN_EMAIL" Admin --password "$ADMIN_PASSWORD" >/dev/null
 KEY=$(sql "select api_key from users where email='$ADMIN_EMAIL'")
 
-step "data source: 0sql on the customer-service model"
-DS=$(api "$REDASH/api/data_sources" | json "d[0]['id'] if d else ''" 2>/dev/null) || {
+# Two data sources, because that is the real shape: Redash owns the warehouse
+# connection, 0sql only plans against it. WAREHOUSE is a plain Redash DuckDB
+# data source; swap it for your Postgres or Snowflake and nothing else changes.
+WAREHOUSE="CS Warehouse (DuckDB)"
+
+step "data source: the warehouse Redash connects to"
+ALL=$(api "$REDASH/api/data_sources") || {
   echo "Redash cannot read its data sources. If REDASH_SECRET_KEY changed since the database was created,"
   echo "reset with: docker compose down -v && ./demo.sh"; exit 1; }
+WH=$(echo "$ALL" | json "next((x['id'] for x in d if x['name']=='$WAREHOUSE'), '')")
+if [ -z "$WH" ]; then
+  BODY=$(python3 -c 'import json,sys;print(json.dumps({"name":sys.argv[1],"type":"duckdb","options":{"dbpath":"/warehouse/customer_service.duckdb"}}))' "$WAREHOUSE")
+  WH=$(api -X POST "$REDASH/api/data_sources" -d "$BODY" | json "d['id']")
+fi
+api -X POST "$REDASH/api/data_sources/$WH/test" | json "d['message']"
+
+step "data source: 0sql on the customer-service model"
+DS=$(echo "$ALL" | json "next((x['id'] for x in d if x['type']=='zsql'), '')")
 if [ -z "$DS" ]; then
-  BODY=$(python3 -c 'import json;print(json.dumps({"name":"0sql: Customer Service","type":"zsql","options":{"server":"http://zsql:3699","project":"customer-service","branch":"main","duckdb_file":"/warehouse/customer_service.duckdb"}}))')
+  BODY=$(python3 -c 'import json,sys;print(json.dumps({"name":"0sql: Customer Service","type":"zsql","options":{"server":"http://zsql:3699","project":"customer-service","branch":"main","data_source":sys.argv[1]}}))' "$WAREHOUSE")
   DS=$(api -X POST "$REDASH/api/data_sources" -d "$BODY" | json "d['id']")
 fi
 api -X POST "$REDASH/api/data_sources/$DS/test" | json "d['message']"
@@ -99,5 +113,6 @@ Redash      $REDASH
   admin     $ADMIN_EMAIL / $ADMIN_PASSWORD        plans as system admin: every region
   regional  $REGIONAL_EMAIL / $REGIONAL_PASSWORD   group $REGIONAL_GROUP: cost measures filtered to AMER
   dashboard $REDASH/dashboards/$D-0sql-on-redash
+warehouse   "$WAREHOUSE", a plain Redash data source; 0sql plans, Redash runs
 0sql        $ZSQL   (try: curl $ZSQL/projects/customer-service/branches/main/fields)
 MSG

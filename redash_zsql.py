@@ -2,18 +2,19 @@
 
 A query is a 0sql shorthand line, such as
 
-    item category, net paid, net profit, year = 2002
+    contact channel, aht mins, escalation rate
 
 or a 0sql spec as a JSON object. The runner sends it to a 0sql server with the
 Redash user as the security context, receives the SQL planned against the
-semantic model, runs that SQL on the warehouse, and returns the rows. The
-planned SQL is attached as the result log, which the Redash query page shows
-under the results. A query prefixed with `explain` returns the SQL itself.
+semantic model, and hands that SQL to the Redash data source named in the
+form. The planned SQL is attached as the result log, which the Redash query
+page shows under the results. A query prefixed with `explain` returns the SQL
+itself.
 
-The warehouse is reached one of two ways, chosen in the data source form:
-a DuckDB file the runner opens read-only, or another Redash data source the
-SQL is handed to, so an existing Postgres, Snowflake or BigQuery connection
-in Redash serves as the warehouse.
+The warehouse is whatever Redash already connects to. This runner opens no
+database of its own and knows no dialect: 0sql plans for the adapter named in
+the model, and the Postgres, Snowflake, BigQuery or DuckDB data source you
+already have runs the statement.
 
 Row-level security comes from the model's policies and the Redash user:
 a Redash group named `key:value` reaches the policy as the tag `key:value`,
@@ -22,8 +23,6 @@ and Redash admins plan as system admins.
 Enable with REDASH_ADDITIONAL_QUERY_RUNNERS=redash_zsql.
 """
 
-import datetime
-import decimal
 import json
 import logging
 
@@ -33,39 +32,7 @@ from redash.query_runner import BaseQueryRunner, register
 
 logger = logging.getLogger(__name__)
 
-try:
-    import duckdb
-except ImportError:  # the DuckDB option is then absent; delegation still works
-    duckdb = None
-
 EXPLAIN = "explain "
-
-# Result column types from the Python values DuckDB returns; its cursor
-# description says only NUMBER for every numeric column.
-PY_TYPES = {
-    bool: "boolean",
-    int: "integer",
-    float: "float",
-    decimal.Decimal: "float",
-    datetime.datetime: "datetime",
-    datetime.date: "date",
-}
-
-
-def column_type(values):
-    for v in values:
-        if v is not None:
-            return PY_TYPES.get(type(v), "string")
-    return "string"
-
-
-def plain(value):
-    """A cell value Redash can serialise."""
-    if isinstance(value, decimal.Decimal):
-        return float(value)
-    if isinstance(value, (datetime.date, datetime.datetime)):
-        return value.isoformat()
-    return value
 
 
 def security_context(user):
@@ -103,11 +70,10 @@ class Zsql(BaseQueryRunner):
                 "api_key": {"type": "string", "title": "API key (a server with accounts on)"},
                 "project": {"type": "string", "title": "Model project"},
                 "branch": {"type": "string", "title": "Model branch", "default": "main"},
-                "duckdb_file": {"type": "string", "title": "Warehouse: a DuckDB file Redash opens read-only"},
-                "data_source": {"type": "string", "title": "Warehouse: …or an existing Redash data source"},
+                "data_source": {"type": "string", "title": "Warehouse: the Redash data source that runs the SQL"},
             },
-            "order": ["server", "api_key", "project", "branch", "duckdb_file", "data_source"],
-            "required": ["server", "project", "branch"],
+            "order": ["server", "api_key", "project", "branch", "data_source"],
+            "required": ["server", "project", "branch", "data_source"],
             "secret": ["api_key"],
         }
 
@@ -137,16 +103,14 @@ class Zsql(BaseQueryRunner):
     # -- the warehouse ------------------------------------------------------
 
     def _target(self):
-        """The runner for the delegated data source, or None for the DuckDB file.
+        """The runner of the Redash data source that runs the SQL.
 
         Raises with a message naming the problem, so a misconfigured data source
         fails on the connection test rather than on the first query.
         """
-        if self.configuration.get("duckdb_file"):
-            return None
         name = self.configuration.get("data_source")
         if not name:
-            raise Exception("The 0sql data source needs a DuckDB file or a Redash data source to run the SQL on.")
+            raise Exception("The 0sql data source needs the name of a Redash data source to run the SQL on.")
         from redash.models import DataSource
 
         ds = DataSource.query.filter(DataSource.name == name).first()
@@ -159,39 +123,19 @@ class Zsql(BaseQueryRunner):
         if syntax != "sql":
             raise Exception(
                 f"{name!r} is a {ds.type} data source, which takes {syntax}, not SQL. "
-                "0sql plans SQL, so pick a SQL data source or a DuckDB file instead."
+                "0sql plans SQL, so name a SQL data source instead."
             )
         return runner
 
     def execute(self, sql, user):
-        """Rows for the SQL, from DuckDB or from the named Redash data source."""
-        runner = self._target()
-        if runner is None:
-            return self._execute_duckdb(sql)
-        return runner.run_query(sql, user)
-
-    def _execute_duckdb(self, sql):
-        if duckdb is None:
-            return None, "The duckdb package is not installed in this Redash image."
-        con = duckdb.connect(self.configuration["duckdb_file"], read_only=True)
-        try:
-            cur = con.execute(sql)
-            raw = cur.fetchall()
-            columns = self.fetch_columns([(d[0], column_type(r[i] for r in raw)) for i, d in enumerate(cur.description)])
-            names = [c["name"] for c in columns]
-            return {"columns": columns, "rows": [dict(zip(names, map(plain, r))) for r in raw]}, None
-        finally:
-            con.close()
+        """Rows for the SQL, from the Redash data source that owns the warehouse."""
+        return self._target().run_query(sql, user)
 
     # -- Redash hooks -------------------------------------------------------
 
     def test_connection(self):
         self._get("/tables")
         self._target()
-        if self.configuration.get("duckdb_file"):
-            if duckdb is None:
-                raise Exception("The duckdb package is not installed in this Redash image.")
-            duckdb.connect(self.configuration["duckdb_file"], read_only=True).close()
 
     def get_schema(self, get_stats=False):
         """The model's dimensions and measures per table, for the sidebar and autocomplete.

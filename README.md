@@ -114,9 +114,9 @@ returns SQL. The runner does the rest, in Redash's own terms.
 
 | Redash hook | what the runner does |
 |---|---|
-| `run_query(query, user)` | POST the line (or spec) and the user's context to `/sql`, run the SQL, return rows with the SQL as the result log |
-| `get_schema()` | GET `/fields`, grouped by table |
-| `test_connection()` | GET `/tables`, open the warehouse |
+| `run_query(query, user)` | POST the line (or spec) and the user's context to `/sql`, hand the SQL to the warehouse data source, return rows with the SQL as the result log |
+| `get_schema()` | GET `/fields`, grouped by table, each tagged measure or dimension |
+| `test_connection()` | GET `/tables`, and check the named data source exists and speaks SQL |
 | `should_annotate_query = False` | Redash would otherwise prefix a `/* user_id */` comment the shorthand rejects |
 
 The security context from a Redash user:
@@ -127,11 +127,12 @@ The security context from a Redash user:
  "groups": [{"name": g.name, "tags": [g.name] if ":" in g.name else []} for g in groups]}
 ```
 
-The warehouse is reached one of two ways, chosen in the data source form:
-a DuckDB file the runner opens read-only (the demo), or **another Redash data
-source** the SQL is handed to. The second is how it meets an existing Redash:
+The warehouse is **whatever Redash already connects to**. The runner opens no
+database of its own and knows no dialect; it names an existing Redash data
+source and hands it the statement. That is how it meets an existing Redash:
 keep the Postgres, Snowflake or BigQuery connection you have, add a 0sql data
-source that runs through it, and write the model for those tables.
+source that runs through it, and write the model for those tables. The demo
+does exactly this, with a plain Redash DuckDB data source as the warehouse.
 
 ## Use it with your own warehouse
 
@@ -143,8 +144,8 @@ source that runs through it, and write the model for those tables.
    dialect (13 are supported).
 2. Serve it: `zsql serve` inside the model directory, or point the compose
    file's `model` volume at it.
-3. In Redash, add a 0sql data source with the project uid, and either a
-   DuckDB file or the name of the Redash data source to run the SQL through.
+3. In Redash, add a 0sql data source with the project uid and the name of the
+   Redash data source that holds your warehouse connection.
 
 ## Known limits
 
