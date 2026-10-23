@@ -134,6 +134,30 @@ keep the Postgres, Snowflake or BigQuery connection you have, add a 0sql data
 source that runs through it, and write the model for those tables. The demo
 does exactly this, with a plain Redash DuckDB data source as the warehouse.
 
+## Install into an existing Redash
+
+The runner is one module with no dependency Redash does not already have.
+Add it to your Redash image, or `pip install redash-zsql` into its virtualenv:
+
+```dockerfile
+FROM redash/redash:26.9.0
+RUN pip install --no-cache-dir redash-zsql
+ENV REDASH_ADDITIONAL_QUERY_RUNNERS=redash_zsql
+```
+
+Redash in this version loads runners from that variable rather than from
+entry points, so the install and the variable are both needed. Set it on the
+server, the worker and the scheduler, then restart those three.
+
+You also need a 0sql server reachable from Redash, serving your model. That
+is `zsql serve` inside the model directory, or the `zsql` service in
+[`compose.yaml`](compose.yaml).
+
+Then in Redash add a data source of type **0sql semantic layer** with the
+server URL, the project uid, the branch, and the name of the Redash data
+source that already holds your warehouse connection. Nothing else changes:
+your existing data sources, dashboards and groups are untouched.
+
 ## Use it with your own warehouse
 
 1. Write a model for your tables: copy the

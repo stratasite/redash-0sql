@@ -1,0 +1,32 @@
+# The query runner as a package, so an existing Redash installs it with pip
+# rather than copying a file. Build: python -m build
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "redash-zsql"
+version = "0.1.0"
+description = "A Redash query runner that plans SQL from a 0sql semantic model, so queries are written in business terms"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Strata" }]
+keywords = ["redash", "0sql", "zsql", "semantic-layer", "query-runner", "bi"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Database :: Front-Ends",
+  "Intended Audience :: Developers",
+]
+# Redash itself supplies the rest; it is the host, not a dependency.
+dependencies = ["requests"]
+
+[project.urls]
+Homepage = "https://github.com/stratasite/redash-0sql"
+Source = "https://github.com/stratasite/redash-0sql"
+"0sql" = "https://github.com/stratasite/0sql"
+
+[tool.setuptools]
+py-modules = ["redash_zsql"]
