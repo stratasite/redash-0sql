@@ -172,7 +172,11 @@ your existing data sources, dashboards and groups are untouched.
    dimensions, measures, joins and policies; `datasources.yml` names your
    dialect (13 are supported).
 2. Serve it: `zsql serve` inside the model directory, or point the compose
-   file's `model` volume at it.
+   file's `customer-service` volume at yours. Deploying compiles the model
+   rather than copying it: the 32 joins in this one become 3091 precomputed
+   join paths, written as one snapshot per branch under the server's data
+   directory. The server watches the files, so editing a model redeploys it
+   and re-runs its tests.
 3. In Redash, add a 0sql data source with the project uid and the name of the
    Redash data source that holds your warehouse connection.
 
@@ -186,6 +190,11 @@ your existing data sources, dashboards and groups are untouched.
   from the schema; decorators and predicates do not.
 - The Redash CLI's `users create --groups` wants a trailing comma in this
   version; `demo.sh` works around it.
+- The zsql server here runs with `--open`: one tenant, no auth, and the
+  mounted model deployed for you. 0sql's own web app, at `/app`, needs
+  `--accounts` instead, and in that mode nothing is deployed until you sign
+  up, mint a key and run `zsql deploy`. That is a different setup, so it is
+  not part of this demo.
 
 ## Layout
 
